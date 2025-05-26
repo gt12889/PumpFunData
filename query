@@ -1,0 +1,23 @@
+WITH new_tokens_solana as (
+    SELECT 
+    token_mint_address,
+    MIN(block_time) as birth_date
+    FROM tokens_solana.transfers
+--    WHERE action = 'mint'
+  --      and outer_executing_account = '6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P'
+  WHERE  outer_executing_account = '6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P'
+    GROUP BY 1
+)
+
+SELECT
+  date_trunc('day',block_time) as date_time,
+  COUNT(DISTINCT(tx_signer)) as total_addresses_creating,
+  COUNT(DISTINCT(tr.token_mint_address)) as total_tokens_launched,
+  SUM(COUNT(DISTINCT(tr.token_mint_address))) OVER (ORDER BY date_trunc('day',block_time)) as cumulative_tokens
+FROM tokens_solana.transfers tr
+INNER JOIN new_tokens_solana n 
+    ON n.token_mint_address =  tr.token_mint_address
+    AND tr.block_time = birth_date
+WHERE DATE('2024-02-01') < DATE(block_time)
+GROUP BY 1
+ORDER BY 1 DESC
